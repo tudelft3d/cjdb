@@ -90,6 +90,14 @@ def cjdb(ctx):
     default=False,
     help=s.transform_help,
 )
+@click.option(
+    "--skip-post-import",
+    "-S",
+    "skip_post_import",
+    is_flag=True,
+    default=False,
+    help="Skip post import functions",
+)
 def import_cj(
     filepath,
     host,
@@ -103,7 +111,8 @@ def import_cj(
     partial_indexed_attributes,
     ignore_repeated_file,
     overwrite,
-    transform
+    transform,
+    skip_post_import  # add this parameter
 ):
     """Import CityJSONL files to a PostgreSQL database.
     Example of cli command:
@@ -122,7 +131,8 @@ def import_cj(
         partial_indexed_attributes,
         ignore_repeated_file,
         overwrite,
-        transform
+        transform,
+        skip_post_import
     ) as imp:
         imp.run_import()
 
