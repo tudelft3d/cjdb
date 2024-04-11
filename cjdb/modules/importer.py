@@ -43,7 +43,7 @@ class SingleFileImport:
 class Importer:
     def __init__(self, engine, filepath, db_schema, input_srid,
                  indexed_attributes, partial_indexed_attributes,
-                 ignore_repeated_file, overwrite, transform):
+                 ignore_repeated_file, overwrite, transform, skip_post_import):
         self.engine = engine
         self.filepath = filepath
         self.db_schema = db_schema
@@ -55,6 +55,7 @@ class Importer:
         self.max_id = 0
         self.processed = dict()
         self.transform = transform
+        self.skip_post_import = skip_post_import
 
         # get allowed types for validation
         self.city_object_types = get_city_object_types()
@@ -74,9 +75,11 @@ class Importer:
         self.prepare_database()
         self.max_id = CjObjectModel.get_max_id(self.session)
         self.parse_cityjson()
-        self.session.commit()
         # post import operations like clustering, indexing...
-        self.post_import()
+        if not self.skip_post_import:
+            self.post_import()
+        else:
+            logger.info("Post import was skipped.")        
         self.session.commit()
 
     def prepare_database(self) -> None:
