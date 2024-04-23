@@ -64,7 +64,9 @@ def resolve(lod_level, vertices, inplace=True):
 
     for boundary in resolvable["boundaries"]:
         for i, shell in enumerate(boundary):
-            if type(shell[0]) is list:
+            if type(shell) is  int:
+                continue
+            elif type(shell[0]) is list:
                 for j, ring in enumerate(shell):
                     new_ring = []
                     for vertex_id in ring:
@@ -204,7 +206,7 @@ def get_ground_surfaces(polygons: List[Polygon]) -> List[Polygon]:
             z = mean([point[2] for point in polygon.exterior.coords])
             ground_surfaces[z] = force_2d(polygon)
     if len(ground_surfaces) == 0:
-        raise Exception(polygons)
+        return []
     z_mean = mean(ground_surfaces.keys())
     return [v for k, v in ground_surfaces.items() if k < z_mean]
 
@@ -256,4 +258,8 @@ def get_ground_geometry(
         surfaces = get_flattened_polygons_from_boundaries(
             geometry["boundaries"])
         ground_surfaces = get_ground_surfaces(surfaces)
+        if ground_surfaces == []:
+            logger.warning(
+                f"""No ground surfaces were found for object ID=({obj_id})."""
+            )
         return merge_into_a_multipolygon(ground_surfaces)
