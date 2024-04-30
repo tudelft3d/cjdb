@@ -75,6 +75,7 @@ class Importer:
         self.max_id = CjObjectModel.get_max_id(self.session)
         self.parse_cityjson()
         self.session.commit()
+        logger.info("Post import operations...")
         # post import operations like clustering, indexing...
         self.post_import()
         self.session.commit()

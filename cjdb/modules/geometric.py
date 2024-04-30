@@ -11,7 +11,7 @@ from shapely.ops import unary_union
 
 from cjdb.logger import logger
 from cjdb.modules.exceptions import InvalidLodException
-
+from shapely import is_valid, is_valid_reason
 
 # get srid from a CRS string definition
 def get_srid(crs):
@@ -198,6 +198,12 @@ def is_surface_vertical(normal: np.ndarray) -> bool:
 def get_ground_surfaces(polygons: List[Polygon]) -> List[Polygon]:
     ground_surfaces = {}
     for polygon in polygons:
+        if not is_valid(polygon):
+            logger.debug(
+                "Invalid polygon found while extracting ground surfaces. Skipping"
+            )
+            logger.debug(is_valid_reason(polygon))
+            continue
         xyz = np.asarray(polygon.exterior.coords)[0:-1]
         normal, is_coplanar = get_normal_newell(xyz)
         if is_surface_vertical(normal):
@@ -214,7 +220,13 @@ def get_ground_surfaces(polygons: List[Polygon]) -> List[Polygon]:
 def merge_into_a_multipolygon(ground_surfaces:
                               List[Union[Polygon, MultiPolygon]]
                               ) -> MultiPolygon:
-    polygon = unary_union(force_2d(ground_surfaces))
+    try:
+        polygon = unary_union(force_2d(ground_surfaces))
+    except BaseException as e:
+        logger.warning(
+            "Error while merging the ground surfaces into a MultiPolygon. Possibly an invalid surface. Skipping"
+        )
+        raise Exception(e)
     if isinstance(polygon, MultiPolygon):
         return polygon
     else:
@@ -262,4 +274,5 @@ def get_ground_geometry(
             logger.warning(
                 f"""No ground surfaces were found for object ID=({obj_id})."""
             )
+            return None
         return merge_into_a_multipolygon(ground_surfaces)
