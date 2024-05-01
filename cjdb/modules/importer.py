@@ -399,6 +399,7 @@ class Importer:
             self.process_line(line_json)
 
         if self.current.city_objects:
+            logger.warning("Importing city  objects")
             obj_insert = (
                 insert(CjObjectModel)
                 .values(self.current.city_objects)
@@ -408,6 +409,7 @@ class Importer:
         self.session.commit()
 
         if self.current.families:
+            logger.warning("Importing city  object relationships")
             city_object_relationships_insert = (
                 insert(CityObjectRelationshipModel)
                 .values(self.current.families)
