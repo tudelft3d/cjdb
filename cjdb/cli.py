@@ -31,11 +31,9 @@ def cjdb(ctx):
 @click.option("--host", "-H", type=str, default="localhost", help=s.host_help)
 @click.option("--port", "-p", type=int, default=5432, help=s.port_help)
 @click.option("--user", "-U", type=str, required=True, help=s.user_help)
-@click.password_option(
-    help=s.password_help,
-    prompt="Password for database user",
-    confirmation_prompt=False
-)
+@click.option('--password', '-P', prompt=True, hide_input=True,
+              envvar='PGPASSWORD',
+              help=s.password_help)
 @click.option("--database", "-d",
               type=str,
               required=True,
@@ -125,11 +123,9 @@ def import_cj(
 @click.option("--host", "-H", type=str, default="localhost", help=s.host_help)
 @click.option("--port", "-p", type=int, default=5432, help=s.port_help)
 @click.option("--user", "-U", type=str, default="postgres", help=s.user_help)
-@click.password_option(
-    help=s.password_help,
-    prompt="Password for database user",
-    confirmation_prompt=False
-)
+@click.option('--password', '-P', prompt=True, hide_input=True,
+              envvar='PGPASSWORD',
+              help=s.password_help)
 @click.option("--database", "-d",
               type=str,
               required=True,
