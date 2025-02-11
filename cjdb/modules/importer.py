@@ -80,7 +80,7 @@ class Importer:
             logger.error("An error occurred during import: %s", e)
         finally:
             logger.info("Post import operations...")
-            # post import operations like indexing...
+            # post import operations like indexing and clustering...
             self.post_import()
             self.session.commit()
 
@@ -128,7 +128,7 @@ class Importer:
         """Perform post import operation on the schema,
            like clustering and indexing"""
 
-        self.cluster_tables()
+        #self.cluster_tables()
         self.index_attributes()
 
         # Optionally, you can define the cluster_tables method if you want to keep it for future use
@@ -136,8 +136,8 @@ class Importer:
         """Cluster tables to improve query performance."""
         with self.engine.connect() as conn:
             conn.execute(text(f"""
-                CLUSTER {self.db_schema}.city_object USING city_object_type_idx;
-                CLUSTER {self.db_schema}.city_object_relationships USING city_object_relationships_parent_idx;
+                CLUSTER {self.db_schema}.cj_metadata USING cj_metadata_gix;
+                CLUSTER {self.db_schema}.city_object USING city_object_ground_gix;
             """))
 
     def set_target_srid(self) -> None:
