@@ -78,6 +78,7 @@ class Importer:
             self.session.commit()
         except Exception as e:
             logger.error("An error occurred during import: %s", e)
+            raise e
         finally:
             logger.info("Post import operations...")
             # post import operations like indexing and clustering...
