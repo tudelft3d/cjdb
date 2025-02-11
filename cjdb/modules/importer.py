@@ -73,12 +73,16 @@ class Importer:
     def run_import(self) -> None:
         self.prepare_database()
         self.max_id = CjObjectModel.get_max_id(self.session)
-        self.parse_cityjson()
-        self.session.commit()
-        logger.info("Post import operations...")
-        # post import operations like clustering, indexing...
-        self.post_import()
-        self.session.commit()
+        try:
+            self.parse_cityjson()
+            self.session.commit()
+        except Exception as e:
+            logger.error("An error occurred during import: %s", e)
+        finally:
+            logger.info("Post import operations...")
+            # post import operations like indexing...
+            self.post_import()
+            self.session.commit()
 
     def prepare_database(self) -> None:
         """Adds the postgis extension and creates
@@ -91,6 +95,21 @@ class Importer:
         # create all tables defined as SqlAlchemy models
         for table in BaseModel.metadata.tables.values():
             table.create(self.engine, checkfirst=True)
+        # create indexes
+        self.create_indexes()
+
+    def create_indexes(self) -> None:
+        """Create indexes on the tables."""
+        with self.engine.connect() as conn:
+            conn.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS cj_metadata_gix ON {self.db_schema}.cj_metadata USING gist(bbox);
+                CREATE INDEX IF NOT EXISTS cj_metadata_source_file_idx ON {self.db_schema}.cj_metadata USING hash(source_file);
+                CREATE INDEX IF NOT EXISTS city_object_type_idx ON {self.db_schema}.city_object USING btree("type");
+                CREATE INDEX IF NOT EXISTS city_object_ground_gix ON {self.db_schema}.city_object USING gist(ground_geometry);
+                CREATE INDEX IF NOT EXISTS lod ON {self.db_schema}.city_object USING gin (geometry);
+                CREATE INDEX IF NOT EXISTS city_object_relationships_parent_idx ON {self.db_schema}.city_object_relationships USING btree(parent_id);
+                CREATE INDEX IF NOT EXISTS city_object_relationships_child_idx ON {self.db_schema}.city_object_relationships USING btree(child_id);
+            """))
 
     def parse_cityjson(self) -> None:
         """Parses the input path."""
@@ -109,14 +128,17 @@ class Importer:
         """Perform post import operation on the schema,
            like clustering and indexing"""
 
-        cur_path = Path(__file__).parent
-        sql_path = os.path.join(cur_path.parent, "resources/post_import.sql")
-
-        with open(sql_path) as f:
-            cmd = f.read().format(schema=self.db_schema)
-        with self.engine.connect() as conn:
-            conn.execute(text(cmd))
+        # self.cluster_tables()
         self.index_attributes()
+
+        # Optionally, you can define the cluster_tables method if you want to keep it for future use
+    def cluster_tables(self) -> None:
+        """Cluster tables to improve query performance."""
+        with self.engine.connect() as conn:
+            conn.execute(text(f"""
+                CLUSTER {self.db_schema}.city_object USING city_object_type_idx;
+                CLUSTER {self.db_schema}.city_object_relationships USING city_object_relationships_parent_idx;
+            """))
 
     def set_target_srid(self) -> None:
         """
@@ -397,9 +419,9 @@ class Importer:
         for line in f.readlines():
             line_json = json.loads(line.rstrip("\n"))
             self.process_line(line_json)
-
+        logger.debug(f"Lines to read {len(self.current.city_objects)}")
         if self.current.city_objects:
-            logger.warning("Importing city  objects")
+            logger.debug("Importing city objects")
             obj_insert = (
                 insert(CjObjectModel)
                 .values(self.current.city_objects)
@@ -409,7 +431,7 @@ class Importer:
         self.session.commit()
 
         if self.current.families:
-            logger.warning("Importing city  object relationships")
+            logger.debug("Importing city object relationships")
             city_object_relationships_insert = (
                 insert(CityObjectRelationshipModel)
                 .values(self.current.families)
