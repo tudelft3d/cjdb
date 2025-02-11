@@ -53,3 +53,31 @@ ORDER BY id ASC;
 SELECT * FROM cjdb.city_object
 WHERE geometry::jsonb @> '[{"lod": "1.2"}]'::jsonb
 ```
+
+
+## Remove texture from all objects:
+
+```SQL
+with expanded_geom as (
+select object_id, 
+       jsonb_array_elements(geometry) - 'texture'  as geo_elem  
+from cjdb.city_object co 
+), 
+new_geom as (
+ select object_id, 
+        jsonb_agg(geo_elem) as geometry 
+  from expanded_geom 
+  group by object_id
+)
+UPDATE
+cjdb.city_object
+set geometry  = new_geom.geometry
+from new_geom 
+where cjdb.city_object.object_id = new_geom.object_id;
+```
+
+## Remove all attributes from all objects:
+
+```SQL
+update cjdb.city_object set "attributes" = null;
+```
