@@ -465,8 +465,8 @@ class Importer:
 
         # sql index command
         cmd_base = (
-            "create index if not exists {table}_{attr_name}_idx "
-            "on {schema}.{table} using "
+            "CREATE INDEX IF NOT EXISTS {table}_{attr_name}_idx "
+            "ON {schema}.{table} USING "
             "btree(((attributes->>'{attr_name}')::{attr_type}))"
         )
 
