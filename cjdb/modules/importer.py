@@ -128,7 +128,7 @@ class Importer:
         """Perform post import operation on the schema,
            like clustering and indexing"""
 
-        # self.cluster_tables()
+        self.cluster_tables()
         self.index_attributes()
 
         # Optionally, you can define the cluster_tables method if you want to keep it for future use
