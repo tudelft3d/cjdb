@@ -78,6 +78,9 @@ class Importer:
         try:
             self.parse_cityjson()
             self.session.commit()
+        except KeyboardInterrupt:
+            print("Import interrupted. Rolling back transaction...")
+            self.session.rollback()
         except Exception as e:
             logger.error("An error occurred during import: %s", e)
             raise e
@@ -143,8 +146,8 @@ class Importer:
         logger.info("Clustering tables, this will take some time...")
         with self.engine.connect() as conn:
             conn.execute(text(f"""
-                CLUSTER {self.db_schema}.cj_metadata USING cj_metadata_gix;
-                CLUSTER {self.db_schema}.city_object USING city_object_ground_gix;
+                CLUSTER VERBOSE {self.db_schema}.cj_metadata USING cj_metadata_gix;
+                CLUSTER VERBOSE {self.db_schema}.city_object USING city_object_ground_gix;
             """))
 
     def set_target_srid(self) -> None:

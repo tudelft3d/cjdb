@@ -53,9 +53,9 @@ transform_help = ("Transform input geometries to the CRS "
                   "of the existing schema")
 
 clustering_help = (
-    "Cluster the tables post import. It is takes time dureing which "
-    "the table is locked but it can significanltly improve "
-    "query speed."
+    "Cluster the tables post import. Clustering can significantly improve "
+    "query speed but it is also time consuming. You should do it only after "
+    "large imports during periods of low database activity."
 )
 
 output_help = (
