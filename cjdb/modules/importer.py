@@ -43,7 +43,8 @@ class SingleFileImport:
 class Importer:
     def __init__(self, engine, filepath, db_schema, input_srid,
                  indexed_attributes, partial_indexed_attributes,
-                 ignore_repeated_file, overwrite, transform):
+                 ignore_repeated_file, overwrite, transform,
+                 clustering):
         self.engine = engine
         self.filepath = filepath
         self.db_schema = db_schema
@@ -55,6 +56,7 @@ class Importer:
         self.max_id = 0
         self.processed = dict()
         self.transform = transform
+        self.clustering = clustering
 
         # get allowed types for validation
         self.city_object_types = get_city_object_types()
@@ -76,6 +78,9 @@ class Importer:
         try:
             self.parse_cityjson()
             self.session.commit()
+        except KeyboardInterrupt:
+            print("Import interrupted. Rolling back transaction...")
+            self.session.rollback()
         except Exception as e:
             logger.error("An error occurred during import: %s", e)
             raise e
@@ -96,6 +101,7 @@ class Importer:
         # create all tables defined as SqlAlchemy models
         for table in BaseModel.metadata.tables.values():
             table.create(self.engine, checkfirst=True)
+        
         # create indexes
         self.create_indexes()
 
@@ -111,6 +117,7 @@ class Importer:
                 CREATE INDEX IF NOT EXISTS city_object_relationships_parent_idx ON {self.db_schema}.city_object_relationships USING btree(parent_id);
                 CREATE INDEX IF NOT EXISTS city_object_relationships_child_idx ON {self.db_schema}.city_object_relationships USING btree(child_id);
             """))
+            conn.commit()
 
     def parse_cityjson(self) -> None:
         """Parses the input path."""
@@ -128,17 +135,19 @@ class Importer:
     def post_import(self) -> None:
         """Perform post import operation on the schema,
            like clustering and indexing"""
-
-        #self.cluster_tables()
+  
+        if self.clustering:
+            self.cluster_tables()
         self.index_attributes()
 
         # Optionally, you can define the cluster_tables method if you want to keep it for future use
     def cluster_tables(self) -> None:
         """Cluster tables to improve query performance."""
+        logger.info("Clustering tables, this will take some time...")
         with self.engine.connect() as conn:
             conn.execute(text(f"""
-                CLUSTER {self.db_schema}.cj_metadata USING cj_metadata_gix;
-                CLUSTER {self.db_schema}.city_object USING city_object_ground_gix;
+                CLUSTER VERBOSE {self.db_schema}.cj_metadata USING cj_metadata_gix;
+                CLUSTER VERBOSE {self.db_schema}.city_object USING city_object_ground_gix;
             """))
 
     def set_target_srid(self) -> None:

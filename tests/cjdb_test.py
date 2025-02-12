@@ -41,7 +41,8 @@ def test_single_import_missing_srid(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         with pytest.raises(MissingCRSException):
             importer.run_import()
@@ -57,7 +58,8 @@ def test_single_import_with_srid_flag(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -72,7 +74,8 @@ def test_repeated_file_with_ignore_repeated_file(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=True,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -139,7 +142,8 @@ def test_repeated_file_with_overwrite(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=True,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -192,7 +196,8 @@ def test_repeated_file_with_prompt_to_continue(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -209,7 +214,8 @@ def test_repeated_file_with_prompt_to_skip_file(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -245,7 +251,8 @@ def test_srid_flag_different_from_existing_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         with pytest.raises(InconsistentCRSException):
             importer.run_import()
@@ -263,7 +270,8 @@ def test_transform_flag_with_same_SRID_than_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -280,7 +288,8 @@ def test_transform_flag_with_different_SRID_than_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -299,7 +308,8 @@ def test_transform_flag_to_new_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False
     ) as importer:
         with pytest.raises(NoSchemaSridException):
             importer.run_import()
@@ -329,10 +339,10 @@ def test_directory_import(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
-
 
 def test_single_import_with_extensions(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
@@ -347,7 +357,8 @@ def test_single_import_with_extensions(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -385,7 +396,8 @@ def test_single_import_without_metadata(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         with pytest.raises(InvalidMetadataException):
             importer.run_import()
@@ -406,7 +418,8 @@ def test_single_import_without_cityjson_obj_in_first_line(
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         with pytest.raises(InvalidCityJSONObjectException):
             importer.run_import()
@@ -425,7 +438,8 @@ def test_single_import_with_geometry_template(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
     ) as importer:
         importer.run_import()
 
@@ -479,6 +493,26 @@ def test_single_import_cj_version_2(
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False
+    ) as importer:
+        importer.run_import()
+
+
+def test_single_import_with_clustering(engine_postgresql, monkeypatch):
+    monkeypatch.setattr("sys.stdin", io.StringIO("y"))
+    engine_postgresql.update_execution_options(
+        schema_translate_map={"cjdb": "cjv3", "vienna": 'cjv3'})
+    with Importer(
+        engine=engine_postgresql,
+        filepath="./tests/files/cube_cjv2.city.jsonl",
+        db_schema="cjv3",
+        input_srid=28992,
+        indexed_attributes=[],
+        partial_indexed_attributes=[],
+        ignore_repeated_file=False,
+        overwrite=False,
+        transform=False,
+        clustering=True
     ) as importer:
         importer.run_import()
