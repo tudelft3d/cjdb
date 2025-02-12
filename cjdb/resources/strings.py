@@ -52,6 +52,12 @@ overwrite_help = (
 transform_help = ("Transform input geometries to the CRS "
                   "of the existing schema")
 
+clustering_help = (
+    "Cluster the tables post import. It is takes time dureing which "
+    "the table is locked but it can significanltly improve "
+    "query speed."
+)
+
 output_help = (
     "Name of the output file. Default name: 'cj_export.city.json' "
 )

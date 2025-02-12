@@ -81,6 +81,13 @@ def cjdb(ctx):
     default=False,
     help=s.transform_help,
 )
+@click.option(
+    "--clustering",
+    "clustering",
+    is_flag=True,
+    default=False,
+    help=s.clustering_help,
+)
 def import_cj(
     filepath,
     host,
@@ -94,7 +101,8 @@ def import_cj(
     partial_indexed_attributes,
     ignore_repeated_file,
     overwrite,
-    transform
+    transform,
+    clustering
 ):
     """Import CityJSONL files to a PostgreSQL database.
     Example of cli command:
@@ -113,7 +121,8 @@ def import_cj(
         partial_indexed_attributes,
         ignore_repeated_file,
         overwrite,
-        transform
+        transform,
+        clustering
     ) as imp:
         imp.run_import()
 
