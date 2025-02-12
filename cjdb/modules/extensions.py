@@ -32,7 +32,9 @@ class ExtensionHandler:
                     except ValueError as e:
                         logger.error(
                             "Extension url: %s did not provide a correct json"
-                            " schema: %s", url, e
+                            " schema: %s",
+                            url,
+                            e,
                         )
                         # raise
                         # throw this exception or ignore it?
@@ -54,8 +56,10 @@ class ExtensionHandler:
                     for obj_type in ext_definition["extraCityObjects"]:
                         self.extra_city_objects.append(obj_type)
                 else:
-                    msg = (f"""Extension url: {url} did not return a """
-                           """correct response""")
+                    msg = (
+                        f"""Extension url: {url} did not return a """
+                        """correct response"""
+                    )
                     logger.error(msg)
                     # raise Exception(msg)
                     return

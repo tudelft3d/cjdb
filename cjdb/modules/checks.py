@@ -36,7 +36,7 @@ def check_reprojection(source_srid, target_srid):
             "The specified target SRID(%s) "
             "lacks information about the Z-axis. "
             "The Z vertex values will remain unchanged.",
-            target_srid
+            target_srid,
         )
 
     group = TransformerGroup(source_proj, target_proj)
@@ -50,7 +50,9 @@ def check_reprojection(source_srid, target_srid):
                required for CRS transformation.""")
         logger.warning(
             "This can also be done manually, and the grid should be put"
-            "in this folder:\n %s", datadir.get_data_dir())
+            "in this folder:\n %s",
+            datadir.get_data_dir(),
+        )
 
         try:
             group.download_grids(datadir.get_data_dir())
