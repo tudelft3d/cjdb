@@ -98,6 +98,9 @@ class Importer:
         # create all tables defined as SqlAlchemy models
         for table in BaseModel.metadata.tables.values():
             table.create(self.engine, checkfirst=True)
+        
+        # create indexes
+        self.create_indexes()
 
     def create_indexes(self) -> None:
         """Create indexes on the tables."""
@@ -129,9 +132,7 @@ class Importer:
     def post_import(self) -> None:
         """Perform post import operation on the schema,
            like clustering and indexing"""
-        # create indexes
-        self.create_indexes()
-
+  
         if self.clustering:
             self.cluster_tables()
         self.index_attributes()
