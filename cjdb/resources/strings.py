@@ -1,9 +1,10 @@
 version_help = "Get the current version"
 
-filepath_help = ("Path to a CityJSONL file or a directory with "
-                 "CityJSONL files. If no path is specified, "
-                 "STDIN will be used."
-                 )
+filepath_help = (
+    "Path to a CityJSONL file or a directory with "
+    "CityJSONL files. If no path is specified, "
+    "STDIN will be used."
+)
 
 host_help = "PostgreSQL database host"
 
@@ -49,13 +50,14 @@ overwrite_help = (
     "all objects in the file."
 )
 
-transform_help = ("Transform input geometries to the CRS "
-                  "of the existing schema")
+transform_help = "Transform input geometries to the CRS of the existing schema"
 
-output_help = (
-    "Name of the output file. Default name: 'cj_export.city.json' "
+clustering_help = (
+    "Cluster the tables post import. Clustering can significantly improve "
+    "query speed but it is also time consuming. You should do it only after "
+    "large imports during periods of low database activity."
 )
 
-query_help = (
-    "SQL query with the ids of the objects to be exported."
-)
+output_help = "Name of the output file. Default name: 'cj_export.city.json' "
+
+query_help = "SQL query with the ids of the objects to be exported."

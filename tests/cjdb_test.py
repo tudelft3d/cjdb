@@ -41,7 +41,8 @@ def test_single_import_missing_srid(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         with pytest.raises(MissingCRSException):
             importer.run_import()
@@ -57,7 +58,8 @@ def test_single_import_with_srid_flag(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
@@ -72,7 +74,8 @@ def test_repeated_file_with_ignore_repeated_file(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=True,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
@@ -85,13 +88,11 @@ def test_db_model_before_overwrite(engine_postgresql):
     assert insp.has_table("city_object_relationships", schema="vienna")
 
     city_object = Table(
-        "city_object", MetaData(), schema="vienna",
-        autoload_with=engine_postgresql
+        "city_object", MetaData(), schema="vienna", autoload_with=engine_postgresql
     )
 
     cj_metadata = Table(
-        "cj_metadata", MetaData(), schema="vienna",
-        autoload_with=engine_postgresql
+        "cj_metadata", MetaData(), schema="vienna", autoload_with=engine_postgresql
     )
 
     query_city_object = select(city_object).where(
@@ -139,16 +140,15 @@ def test_repeated_file_with_overwrite(engine_postgresql):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=True,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
 
 def test_db_model_after_overwrite(engine_postgresql):
     cj_metadata = Table(
-        "cj_metadata", MetaData(),
-        schema="vienna",
-        autoload_with=engine_postgresql
+        "cj_metadata", MetaData(), schema="vienna", autoload_with=engine_postgresql
     )
 
     query_cj_metadata = select(cj_metadata).where(
@@ -156,9 +156,7 @@ def test_db_model_after_overwrite(engine_postgresql):
     )
 
     city_object = Table(
-        "city_object", MetaData(),
-        schema="vienna",
-        autoload_with=engine_postgresql
+        "city_object", MetaData(), schema="vienna", autoload_with=engine_postgresql
     )
 
     query_missing_city_object = select(city_object).where(
@@ -192,13 +190,13 @@ def test_repeated_file_with_prompt_to_continue(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
 
-def test_repeated_file_with_prompt_to_skip_file(engine_postgresql,
-                                                monkeypatch):
+def test_repeated_file_with_prompt_to_skip_file(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("n"))
     with Importer(
         engine=engine_postgresql,
@@ -209,7 +207,8 @@ def test_repeated_file_with_prompt_to_skip_file(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
@@ -233,8 +232,7 @@ def test_export_all(engine_postgresql):
         exporter.run_export()
 
 
-def test_srid_flag_different_from_existing_schema(engine_postgresql,
-                                                  monkeypatch):
+def test_srid_flag_different_from_existing_schema(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
     with Importer(
         engine=engine_postgresql,
@@ -245,14 +243,14 @@ def test_srid_flag_different_from_existing_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         with pytest.raises(InconsistentCRSException):
             importer.run_import()
 
 
-def test_transform_flag_with_same_SRID_than_schema(engine_postgresql,
-                                                   monkeypatch):
+def test_transform_flag_with_same_SRID_than_schema(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
     with Importer(
         engine=engine_postgresql,
@@ -263,13 +261,13 @@ def test_transform_flag_with_same_SRID_than_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
 
-def test_transform_flag_with_different_SRID_than_schema(engine_postgresql,
-                                                        monkeypatch):
+def test_transform_flag_with_different_SRID_than_schema(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
     with Importer(
         engine=engine_postgresql,
@@ -280,16 +278,17 @@ def test_transform_flag_with_different_SRID_than_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
 
-def test_transform_flag_to_new_schema(engine_postgresql,
-                                      monkeypatch):
+def test_transform_flag_to_new_schema(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
     engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "new_schema"})
+        schema_translate_map={"vienna": "new_schema"}
+    )
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/vienna.jsonl",
@@ -299,7 +298,8 @@ def test_transform_flag_to_new_schema(engine_postgresql,
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=True
+        transform=True,
+        clustering=False,
     ) as importer:
         with pytest.raises(NoSchemaSridException):
             importer.run_import()
@@ -318,8 +318,7 @@ def test_export_one(engine_postgresql):
 
 def test_directory_import(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
-    engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "cjdb"})
+    engine_postgresql.update_execution_options(schema_translate_map={"vienna": "cjdb"})
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/cjfiles",
@@ -329,15 +328,15 @@ def test_directory_import(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
 
 def test_single_import_with_extensions(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
-    engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "cjdb"})
+    engine_postgresql.update_execution_options(schema_translate_map={"vienna": "cjdb"})
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/extension.city.jsonl",
@@ -347,14 +346,13 @@ def test_single_import_with_extensions(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
     cj_metadata = Table(
-        "cj_metadata", MetaData(),
-        schema="cjdb",
-        autoload_with=engine_postgresql
+        "cj_metadata", MetaData(), schema="cjdb", autoload_with=engine_postgresql
     )
 
     query_cj_metadata = (
@@ -366,16 +364,15 @@ def test_single_import_with_extensions(engine_postgresql, monkeypatch):
     with Session(engine_postgresql) as session:
         row = session.execute(query_cj_metadata).first()
         assert (
-            row.extensions["Noise"]["url"] ==
-            "https://www.cityjson.org/tutorials/files/noise.ext.json"
+            row.extensions["Noise"]["url"]
+            == "https://www.cityjson.org/tutorials/files/noise.ext.json"
         )
         assert row.extensions["Noise"]["version"] == "1.1.0"
 
 
 def test_single_import_without_metadata(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
-    engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "cjdb"})
+    engine_postgresql.update_execution_options(schema_translate_map={"vienna": "cjdb"})
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/no_metadata.city.jsonl",
@@ -385,7 +382,8 @@ def test_single_import_without_metadata(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         with pytest.raises(InvalidMetadataException):
             importer.run_import()
@@ -395,8 +393,7 @@ def test_single_import_without_cityjson_obj_in_first_line(
     engine_postgresql, monkeypatch
 ):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
-    engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "cjdb"})
+    engine_postgresql.update_execution_options(schema_translate_map={"vienna": "cjdb"})
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/no_cityjson_obj.city.jsonl",
@@ -406,7 +403,8 @@ def test_single_import_without_cityjson_obj_in_first_line(
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         with pytest.raises(InvalidCityJSONObjectException):
             importer.run_import()
@@ -414,8 +412,7 @@ def test_single_import_without_cityjson_obj_in_first_line(
 
 def test_single_import_with_geometry_template(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
-    engine_postgresql.update_execution_options(
-        schema_translate_map={"vienna": "cjdb"})
+    engine_postgresql.update_execution_options(schema_translate_map={"vienna": "cjdb"})
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/geomtemplate.city.jsonl",
@@ -425,7 +422,8 @@ def test_single_import_with_geometry_template(engine_postgresql, monkeypatch):
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
     ) as importer:
         importer.run_import()
 
@@ -436,9 +434,7 @@ def test_single_import_with_geometry_template(engine_postgresql, monkeypatch):
     assert insp.has_table("city_object_relationships", schema="cjdb")
 
     cj_metadata1 = Table(
-        "cj_metadata", MetaData(),
-        schema="cjdb",
-        autoload_with=engine_postgresql
+        "cj_metadata", MetaData(), schema="cjdb", autoload_with=engine_postgresql
     )
 
     query_cj_metadata = (
@@ -464,12 +460,11 @@ def test_single_import_with_geometry_template(engine_postgresql, monkeypatch):
         ]
 
 
-def test_single_import_cj_version_2(
-    engine_postgresql, monkeypatch
-):
+def test_single_import_cj_version_2(engine_postgresql, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO("y"))
     engine_postgresql.update_execution_options(
-        schema_translate_map={"cjdb": "cjv2", "vienna": 'cjv2'})
+        schema_translate_map={"cjdb": "cjv2", "vienna": "cjv2"}
+    )
     with Importer(
         engine=engine_postgresql,
         filepath="./tests/files/cube_cjv2.city.jsonl",
@@ -479,6 +474,27 @@ def test_single_import_cj_version_2(
         partial_indexed_attributes=[],
         ignore_repeated_file=False,
         overwrite=False,
-        transform=False
+        transform=False,
+        clustering=False,
+    ) as importer:
+        importer.run_import()
+
+
+def test_single_import_with_clustering(engine_postgresql, monkeypatch):
+    monkeypatch.setattr("sys.stdin", io.StringIO("y"))
+    engine_postgresql.update_execution_options(
+        schema_translate_map={"cjdb": "cjv3", "vienna": "cjv3"}
+    )
+    with Importer(
+        engine=engine_postgresql,
+        filepath="./tests/files/cube_cjv2.city.jsonl",
+        db_schema="cjv3",
+        input_srid=28992,
+        indexed_attributes=[],
+        partial_indexed_attributes=[],
+        ignore_repeated_file=False,
+        overwrite=False,
+        transform=False,
+        clustering=True,
     ) as importer:
         importer.run_import()

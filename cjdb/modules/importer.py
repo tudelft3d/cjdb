@@ -14,8 +14,7 @@ from cjdb.logger import logger
 from cjdb.model.sqlalchemy_models import (BaseModel,
                                           CityObjectRelationshipModel,
                                           CjMetadataModel, CjObjectModel)
-from cjdb.modules.checks import (check_object_type,
-                                 check_root_properties)
+from cjdb.modules.checks import check_object_type, check_root_properties
 from cjdb.modules.extensions import ExtensionHandler
 from cjdb.modules.geometric import (get_ground_geometry, get_srid,
                                     reproject_vertex_list,
@@ -41,9 +40,19 @@ class SingleFileImport:
 
 # importer class called once per whole import
 class Importer:
-    def __init__(self, engine, filepath, db_schema, input_srid,
-                 indexed_attributes, partial_indexed_attributes,
-                 ignore_repeated_file, overwrite, transform):
+    def __init__(
+        self,
+        engine,
+        filepath,
+        db_schema,
+        input_srid,
+        indexed_attributes,
+        partial_indexed_attributes,
+        ignore_repeated_file,
+        overwrite,
+        transform,
+        clustering,
+    ):
         self.engine = engine
         self.filepath = filepath
         self.db_schema = db_schema
@@ -55,6 +64,7 @@ class Importer:
         self.max_id = 0
         self.processed = dict()
         self.transform = transform
+        self.clustering = clustering
 
         # get allowed types for validation
         self.city_object_types = get_city_object_types()
@@ -73,11 +83,20 @@ class Importer:
     def run_import(self) -> None:
         self.prepare_database()
         self.max_id = CjObjectModel.get_max_id(self.session)
-        self.parse_cityjson()
-        self.session.commit()
-        # post import operations like clustering, indexing...
-        self.post_import()
-        self.session.commit()
+        try:
+            self.parse_cityjson()
+            self.session.commit()
+        except KeyboardInterrupt:
+            print("Import interrupted. Rolling back transaction...")
+            self.session.rollback()
+        except Exception as e:
+            logger.error("An error occurred during import: %s", e)
+            raise e
+        finally:
+            logger.info("Post import operations...")
+            # post import operations like indexing and clustering...
+            self.post_import()
+            self.session.commit()
 
     def prepare_database(self) -> None:
         """Adds the postgis extension and creates
@@ -90,6 +109,23 @@ class Importer:
         # create all tables defined as SqlAlchemy models
         for table in BaseModel.metadata.tables.values():
             table.create(self.engine, checkfirst=True)
+
+        # create indexes
+        self.create_indexes()
+
+    def create_indexes(self) -> None:
+        """Create indexes on the tables."""
+        with self.engine.connect() as conn:
+            conn.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS cj_metadata_gix ON {self.db_schema}.cj_metadata USING gist(bbox);
+                CREATE INDEX IF NOT EXISTS cj_metadata_source_file_idx ON {self.db_schema}.cj_metadata USING hash(source_file);
+                CREATE INDEX IF NOT EXISTS city_object_type_idx ON {self.db_schema}.city_object USING btree("type");
+                CREATE INDEX IF NOT EXISTS city_object_ground_gix ON {self.db_schema}.city_object USING gist(ground_geometry);
+                CREATE INDEX IF NOT EXISTS lod ON {self.db_schema}.city_object USING gin (geometry);
+                CREATE INDEX IF NOT EXISTS city_object_relationships_parent_idx ON {self.db_schema}.city_object_relationships USING btree(parent_id);
+                CREATE INDEX IF NOT EXISTS city_object_relationships_child_idx ON {self.db_schema}.city_object_relationships USING btree(child_id);
+            """))
+            conn.commit()
 
     def parse_cityjson(self) -> None:
         """Parses the input path."""
@@ -106,16 +142,22 @@ class Importer:
 
     def post_import(self) -> None:
         """Perform post import operation on the schema,
-           like clustering and indexing"""
+        like clustering and indexing"""
 
-        cur_path = Path(__file__).parent
-        sql_path = os.path.join(cur_path.parent, "resources/post_import.sql")
-
-        with open(sql_path) as f:
-            cmd = f.read().format(schema=self.db_schema)
-        with self.engine.connect() as conn:
-            conn.execute(text(cmd))
+        if self.clustering:
+            self.cluster_tables()
         self.index_attributes()
+
+        # Optionally, you can define the cluster_tables method if you want to keep it for future use
+
+    def cluster_tables(self) -> None:
+        """Cluster tables to improve query performance."""
+        logger.info("Clustering tables, this will take some time...")
+        with self.engine.connect() as conn:
+            conn.execute(text(f"""
+                CLUSTER VERBOSE {self.db_schema}.cj_metadata USING cj_metadata_gix;
+                CLUSTER VERBOSE {self.db_schema}.city_object USING city_object_ground_gix;
+            """))
 
     def set_target_srid(self) -> None:
         """
@@ -130,11 +172,12 @@ class Importer:
         if not self.transform:
             self.current.target_srid = self.current.source_srid
         else:
-            schema_srid = (self.session.query(CjMetadataModel)
-                           .filter(CjMetadataModel.finished_at.isnot(None))
-                           .order_by(CjMetadataModel.finished_at.desc())
-                           .first()
-                           )
+            schema_srid = (
+                self.session.query(CjMetadataModel)
+                .filter(CjMetadataModel.finished_at.isnot(None))
+                .order_by(CjMetadataModel.finished_at.desc())
+                .first()
+            )
             if schema_srid:
                 self.current.target_srid = schema_srid.srid
             else:
@@ -156,13 +199,15 @@ class Importer:
 
         if self.input_srid:
             if self.current.source_srid:
-                logger.warning("""Input SRID is different than the SRID in the 
+                logger.warning(
+                    """Input SRID is different than the SRID in the 
                                 file's metadata:
                                 Input SRID: %s
                                 Source SRID: %s
                                 Source SRID will be overwritten.""",
-                               self.input_srid,
-                               self.current.source_srid)
+                    self.input_srid,
+                    self.current.source_srid,
+                )
 
             self.current.source_srid = self.input_srid
         else:
@@ -174,8 +219,8 @@ class Importer:
     def extract_cj_metadatadata(self, line_json):
         if "metadata" not in line_json:
             raise exceptions.InvalidMetadataException(
-                "The file should contain a member"
-                "'metadata', in the first object")
+                "The file should contain a member'metadata', in the first object"
+            )
 
         extra_root_properties = find_extra_properties(line_json)
 
@@ -207,9 +252,7 @@ class Importer:
             )
 
         # store extensions data - extra root properties, extra city objects
-        self.current.extension_handler = ExtensionHandler(
-            line_json.get("extensions")
-        )
+        self.current.extension_handler = ExtensionHandler(line_json.get("extensions"))
 
         # prepare extra properties coming from extensions
         # they will be placed in the extra_properties jsonb column
@@ -239,14 +282,13 @@ class Importer:
 
         if cj_metadata.source_file.lower() != "stdin":
             # compare to existing import metas
-            imported_files = cj_metadata.get_already_imported_files(
-                self.session
-            )
+            imported_files = cj_metadata.get_already_imported_files(self.session)
 
             if (
-                self.ignore_repeated_file and
-                    imported_files.first() and 
-                    not self.overwrite):
+                self.ignore_repeated_file
+                and imported_files.first()
+                and not self.overwrite
+            ):
                 logger.warning("File already imported. Skipping...")
                 return False
             elif imported_files.first() and not self.overwrite:
@@ -254,7 +296,8 @@ class Importer:
                     "A file with the same name (%s) was previously "
                     "imported on %s. Use the --ignore-repeated-file "
                     "to skip already imported files.",
-                    cj_metadata.source_file, imported_files.first().finished_at
+                    cj_metadata.source_file,
+                    imported_files.first().finished_at,
                 )
                 user_answer = input(
                     "Should the import continue? "
@@ -265,21 +308,25 @@ class Importer:
                 )
                 if user_answer.lower() != "y":
                     logger.warning(
-                        f"Import of file {cj_metadata.source_file}"
-                        "skipped by user.")
+                        f"Import of file {cj_metadata.source_file}skipped by user."
+                    )
                     return False
             elif imported_files.first() and self.overwrite:
                 logger.warning(
                     "File already imported. Overwriting all objects"
-                    f" from source file {cj_metadata.source_file}")
+                    f" from source file {cj_metadata.source_file}"
+                )
                 imported_files.delete()
 
         different_srid = cj_metadata.different_srid_meta(self.session)
         if different_srid:
-            logger.error("Not matching coordinate Reference Systems"
-                         "\nCurrently imported SRID: %s"
-                         "\nRecently imported SRID: %s",
-                         cj_metadata.srid, different_srid.srid)
+            logger.error(
+                "Not matching coordinate Reference Systems"
+                "\nCurrently imported SRID: %s"
+                "\nRecently imported SRID: %s",
+                cj_metadata.srid,
+                different_srid.srid,
+            )
             raise exceptions.InconsistentCRSException()
 
         # add metadata to the database
@@ -300,9 +347,7 @@ class Importer:
 
         # reproject if needed
         source_target_srid = None
-        if (
-            self.current.target_srid != self.current.source_srid
-        ):
+        if self.current.target_srid != self.current.source_srid:
             source_target_srid = (
                 self.current.source_srid,
                 self.current.target_srid,
@@ -316,7 +361,6 @@ class Importer:
 
         # create CityJSONObjects
         for obj_id, cityobj in line_json["CityObjects"].items():
-
             # get 3D geom, ground geom and bbox
             geometry, ground_geometry = self.get_geometries(
                 obj_id, cityobj, vertices, source_target_srid
@@ -360,19 +404,18 @@ class Importer:
             for child_id in cityobj.get("children", []):
                 child_unique_id = self.processed.get(child_id, None)
                 if child_unique_id:
-                    city_object_relationships_ties.append((city_object_id,
-                                                           child_unique_id))
+                    city_object_relationships_ties.append(
+                        (city_object_id, child_unique_id)
+                    )
                 else:
                     self.max_id = self.max_id + 1
                     self.processed[child_id] = self.max_id
-                    city_object_relationships_ties.append((city_object_id,
-                                                           self.max_id))
+                    city_object_relationships_ties.append((city_object_id, self.max_id))
 
         # create children-parent links after all objects
         # from the CityJSONFeature already exist
         for parent_id, child_id in city_object_relationships_ties:
-            self.current.families.append({"parent_id": parent_id,
-                                          "child_id": child_id})
+            self.current.families.append({"parent_id": parent_id, "child_id": child_id})
 
     def process_file(self, filepath) -> bool:
         """Process a single cityJSON file"""
@@ -396,8 +439,8 @@ class Importer:
         for line in f.readlines():
             line_json = json.loads(line.rstrip("\n"))
             self.process_line(line_json)
-
         if self.current.city_objects:
+            logger.debug("Importing city objects")
             obj_insert = (
                 insert(CjObjectModel)
                 .values(self.current.city_objects)
@@ -407,6 +450,7 @@ class Importer:
         self.session.commit()
 
         if self.current.families:
+            logger.debug("Importing city object relationships")
             city_object_relationships_insert = (
                 insert(CityObjectRelationshipModel)
                 .values(self.current.families)
@@ -440,15 +484,13 @@ class Importer:
 
         # sql index command
         cmd_base = (
-            "create index if not exists {table}_{attr_name}_idx "
-            "on {schema}.{table} using "
+            "CREATE INDEX IF NOT EXISTS {table}_{attr_name}_idx "
+            "ON {schema}.{table} USING "
             "btree(((attributes->>'{attr_name}')::{attr_type}))"
         )
 
         # prepare partial and non partial indexes in one list
-        attributes = [
-            (a, True) for a in self.partial_indexed_attributes
-        ] + [  # noqa
+        attributes = [(a, True) for a in self.partial_indexed_attributes] + [  # noqa
             (a, False) for a in self.indexed_attributes
         ]
 
