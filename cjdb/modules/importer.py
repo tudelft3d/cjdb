@@ -439,7 +439,6 @@ class Importer:
         for line in f.readlines():
             line_json = json.loads(line.rstrip("\n"))
             self.process_line(line_json)
-        logger.debug(f"Lines to read {len(self.current.city_objects)}")
         if self.current.city_objects:
             logger.debug("Importing city objects")
             obj_insert = (
