@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="Welcome to cjdb’s documentation!" href="index.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.09.10 -->
-        <title>cjdb CLI - cjdb 2.1.0 documentation</title>
+        <title>cjdb CLI - cjdb 2.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">cjdb 2.1.0 documentation</div></a>
+      <a href="index.html"><div class="brand">cjdb 2.2.0 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">cjdb 2.1.0 documentation</span>
+  <span class="sidebar-brand-text">cjdb 2.2.0 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -248,8 +248,8 @@
 </dd></dl>
 
 <dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-cjdb-export-password">
-<span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-cjdb-export-password" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object std" id="cmdoption-cjdb-export-P">
+<span id="cmdoption-cjdb-export-password"></span><span class="sig-name descname"><span class="pre">-P</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-cjdb-export-P" title="Permalink to this definition">#</a></dt>
 <dd><p>PostgreSQL database user password</p>
 </dd></dl>
 
@@ -269,6 +269,15 @@
 <dt class="sig sig-object std" id="cmdoption-cjdb-export-o">
 <span id="cmdoption-cjdb-export-output"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--output</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;output&gt;</span></span><a class="headerlink" href="#cmdoption-cjdb-export-o" title="Permalink to this definition">#</a></dt>
 <dd><p>Name of the output file. Default name: ‘cj_export.city.json’</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<span class="target" id="cjdb-export-password-pgpassword"></span><dl class="std envvar">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">PGPASSWORD</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-cjdb-export-P"><code class="xref std std-option docutils literal notranslate"><span class="pre">--password</span></code></a></p>
+</div></blockquote>
 </dd></dl>
 
 </section>
@@ -309,8 +318,8 @@ Example of cli command:</p>
 </dd></dl>
 
 <dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-cjdb-import-password">
-<span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-cjdb-import-password" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object std" id="cmdoption-cjdb-import-P">
+<span id="cmdoption-cjdb-import-password"></span><span class="sig-name descname"><span class="pre">-P</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-cjdb-import-P" title="Permalink to this definition">#</a></dt>
 <dd><p>PostgreSQL database user password</p>
 </dd></dl>
 
@@ -360,6 +369,21 @@ Example of cli command:</p>
 <dt class="sig sig-object std" id="cmdoption-cjdb-import-transform">
 <span class="sig-name descname"><span class="pre">--transform</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-cjdb-import-transform" title="Permalink to this definition">#</a></dt>
 <dd><p>Transform input geometries to the CRS of the existing schema</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-cjdb-import-clustering">
+<span class="sig-name descname"><span class="pre">--clustering</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-cjdb-import-clustering" title="Permalink to this definition">#</a></dt>
+<dd><p>Cluster the tables post import. Clustering can significantly improve query speed but it is also time consuming. You should do it only after large imports during periods of low database activity.</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<span class="target" id="cjdb-import-password-pgpassword"></span><dl class="std envvar">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">PGPASSWORD</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-cjdb-import-P"><code class="xref std std-option docutils literal notranslate"><span class="pre">--password</span></code></a></p>
+</div></blockquote>
 </dd></dl>
 
 </section>
@@ -430,7 +454,7 @@ Example of cli command:</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=90673249"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
