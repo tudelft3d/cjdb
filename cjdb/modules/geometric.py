@@ -5,13 +5,13 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 from cjio.geom_help import get_normal_newell
 from pyproj import CRS, Transformer
-from shapely import force_2d
+from shapely import force_2d, is_valid, is_valid_reason
 from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
 from cjdb.logger import logger
 from cjdb.modules.exceptions import InvalidLodException
-from shapely import is_valid, is_valid_reason
+
 
 # get srid from a CRS string definition
 def get_srid(crs):
@@ -45,9 +45,7 @@ def reproject_vertex_list(vertices, srid_from, srid_to):
     target_proj = CRS.from_epsg(srid_to)
 
     # prepare transformer from crs to crs
-    transformer = Transformer.from_crs(source_proj,
-                                       target_proj,
-                                       always_xy=True)
+    transformer = Transformer.from_crs(source_proj, target_proj, always_xy=True)
 
     # transform all the coordinates
     reprojected_xyz = transformer.transform(*zip(*vertices))
@@ -64,7 +62,7 @@ def resolve(lod_level, vertices, inplace=True):
 
     for boundary in resolvable["boundaries"]:
         for i, shell in enumerate(boundary):
-            if type(shell) is  int:
+            if type(shell) is int:
                 continue
             elif type(shell[0]) is list:
                 for j, ring in enumerate(shell):
@@ -83,10 +81,7 @@ def resolve(lod_level, vertices, inplace=True):
     return resolvable
 
 
-def resolve_template(lod_level,
-                     vertices,
-                     geometry_templates,
-                     source_target_srid):
+def resolve_template(lod_level, vertices, geometry_templates, source_target_srid):
     # get anchor point
     vertex_id = lod_level["boundaries"][0]
     anchor = vertices[vertex_id]
@@ -169,9 +164,7 @@ def get_flattened_polygons_from_boundaries(
         return polygons
     else:
         for shell in boundaries:
-            polygons = get_flattened_polygons_from_boundaries(
-                shell,
-                polygons=polygons)
+            polygons = get_flattened_polygons_from_boundaries(shell, polygons=polygons)
         return polygons
 
 
@@ -185,9 +178,7 @@ def is_surface_vertical(normal: np.ndarray) -> bool:
     by calculating their dot product. If the dot product is
     close to 0 then the vectors are perpendicular.
     """
-    dot_prd = 0 * normal[0] \
-        + 0 * normal[1] \
-        + 1 * normal[2]
+    dot_prd = 0 * normal[0] + 0 * normal[1] + 1 * normal[2]
 
     if abs(dot_prd) < 0.1:
         return True
@@ -217,14 +208,15 @@ def get_ground_surfaces(polygons: List[Polygon]) -> List[Polygon]:
     return [v for k, v in ground_surfaces.items() if k < z_mean]
 
 
-def merge_into_a_multipolygon(ground_surfaces:
-                              List[Union[Polygon, MultiPolygon]]
-                              ) -> MultiPolygon:
+def merge_into_a_multipolygon(
+    ground_surfaces: List[Union[Polygon, MultiPolygon]]
+) -> MultiPolygon:
     try:
         polygon = unary_union(force_2d(ground_surfaces))
     except BaseException as e:
         logger.warning(
-            "Error while merging the ground surfaces into a MultiPolygon. Possibly an invalid surface. Skipping"
+            "Error while merging the ground surfaces into a MultiPolygon. Possibly an"
+            " invalid surface. Skipping"
         )
         raise Exception(e)
     if isinstance(polygon, MultiPolygon):
@@ -233,10 +225,8 @@ def merge_into_a_multipolygon(ground_surfaces:
         return MultiPolygon([polygon])
 
 
-def get_ground_geometry(
-    geometries: List[Dict[str, Any]], obj_id: str
-) -> MultiPolygon:
-    """ Receives a list of transformed boundary coordinates
+def get_ground_geometry(geometries: List[Dict[str, Any]], obj_id: str) -> MultiPolygon:
+    """Receives a list of transformed boundary coordinates
     of the city object
     and extracts only the ground surface.
     If there is an LoD 0, then all the available surfaces
@@ -250,12 +240,9 @@ def get_ground_geometry(
         logger.warning(f"No geometry for object ID=({obj_id}) ")
         return None
 
-    if geometry["type"] == "MultiPoint" or\
-       geometry["type"] == "MultiLineString":
-        logger.warning(
-            f"""MultiPoint or MultiLineString type has no ground geometry,
-            object ID=({obj_id})"""
-        )
+    if geometry["type"] == "MultiPoint" or geometry["type"] == "MultiLineString":
+        logger.warning(f"""MultiPoint or MultiLineString type has no ground geometry,
+            object ID=({obj_id})""")
         # TODO return convex hull of the points as ground geometry.
         return None
 
@@ -267,8 +254,7 @@ def get_ground_geometry(
     else:
         # TODO: check if there are surface types available
         # to choose the ground surfaces
-        surfaces = get_flattened_polygons_from_boundaries(
-            geometry["boundaries"])
+        surfaces = get_flattened_polygons_from_boundaries(geometry["boundaries"])
         ground_surfaces = get_ground_surfaces(surfaces)
         if ground_surfaces == []:
             logger.warning(

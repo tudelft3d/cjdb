@@ -1,10 +1,11 @@
-import click
 import os
-from cjdb.logger import logger
+
+import click
 
 from cjdb import __version__
-from cjdb.modules.importer import Importer
+from cjdb.logger import logger
 from cjdb.modules.exporter import Exporter
+from cjdb.modules.importer import Importer
 from cjdb.modules.utils import get_db_engine, get_db_psycopg_conn
 from cjdb.resources import strings as s
 
@@ -24,31 +25,28 @@ def cjdb(ctx):
 
 
 @cjdb.command(name="import")
-@click.option("--filepath", "-f",
-              type=str,
-              default="stdin",
-              help=s.filepath_help)
+@click.option("--filepath", "-f", type=str, default="stdin", help=s.filepath_help)
 @click.option("--host", "-H", type=str, default="localhost", help=s.host_help)
 @click.option("--port", "-p", type=int, default=5432, help=s.port_help)
 @click.option("--user", "-U", type=str, required=True, help=s.user_help)
-@click.option('--password', '-P', prompt=True, hide_input=True,
-              envvar='PGPASSWORD',
-              help=s.password_help)
-@click.option("--database", "-d",
-              type=str,
-              required=True,
-              help=s.database_help)
-@click.option("--schema", "-s", type=str, default="cjdb", help=s.schema_help)
-@click.option("--srid", "-I", "input_srid",
-              type=int,
-              default=None,
-              help=s.srid_help)
 @click.option(
-    "--attr-index", "-x",
+    "--password",
+    "-P",
+    prompt=True,
+    hide_input=True,
+    envvar="PGPASSWORD",
+    help=s.password_help,
+)
+@click.option("--database", "-d", type=str, required=True, help=s.database_help)
+@click.option("--schema", "-s", type=str, default="cjdb", help=s.schema_help)
+@click.option("--srid", "-I", "input_srid", type=int, default=None, help=s.srid_help)
+@click.option(
+    "--attr-index",
+    "-x",
     "indexed_attributes",
     type=str,
     multiple=True,
-    help=s.index_help
+    help=s.index_help,
 )
 @click.option(
     "--partial-attr-index",
@@ -102,7 +100,7 @@ def import_cj(
     ignore_repeated_file,
     overwrite,
     transform,
-    clustering
+    clustering,
 ):
     """Import CityJSONL files to a PostgreSQL database.
     Example of cli command:
@@ -122,7 +120,7 @@ def import_cj(
         ignore_repeated_file,
         overwrite,
         transform,
-        clustering
+        clustering,
     ) as imp:
         imp.run_import()
 
@@ -132,45 +130,37 @@ def import_cj(
 @click.option("--host", "-H", type=str, default="localhost", help=s.host_help)
 @click.option("--port", "-p", type=int, default=5432, help=s.port_help)
 @click.option("--user", "-U", type=str, default="postgres", help=s.user_help)
-@click.option('--password', '-P', prompt=True, hide_input=True,
-              envvar='PGPASSWORD',
-              help=s.password_help)
-@click.option("--database", "-d",
-              type=str,
-              required=True,
-              help=s.database_help)
+@click.option(
+    "--password",
+    "-P",
+    prompt=True,
+    hide_input=True,
+    envvar="PGPASSWORD",
+    help=s.password_help,
+)
+@click.option("--database", "-d", type=str, required=True, help=s.database_help)
 @click.option("--schema", "-s", type=str, default="cjdb", help=s.schema_help)
-@click.option("--output", "-o",
-              type=str,
-              default="cj_export.jsonl",
-              help=s.output_help)
+@click.option("--output", "-o", type=str, default="cj_export.jsonl", help=s.output_help)
 def export_cj(query, host, port, user, password, database, schema, output):
     """Export a CityJSONL schema to a file.
- 
-       Example for exporting all the objects in a schema:
 
-        cjdb export -H localhost -U myusername -d mydb
-        -s myschema -p 5432 -o result.jsonl
+    Example for exporting all the objects in a schema:
 
-       Example for exporting a specific object in a schema:
+     cjdb export -H localhost -U myusername -d mydb
+     -s myschema -p 5432 -o result.jsonl
 
-        cjdb export -H localhost -U myusername -d mydb
-        -s myschema -p 5432 -o result.jsonl -q "SELECT 1 as id"
+    Example for exporting a specific object in a schema:
+
+     cjdb export -H localhost -U myusername -d mydb
+     -s myschema -p 5432 -o result.jsonl -q "SELECT 1 as id"
     """
     base = os.path.basename(output)
     dirname = os.path.abspath(os.path.dirname(output))
     if not os.path.exists(dirname):
-        raise click.ClickException(
-            'Output path does not exist: "%s"' % (dirname)
-        )
+        raise click.ClickException('Output path does not exist: "%s"' % (dirname))
     output_abs = os.path.join(dirname, base)
     conn = get_db_psycopg_conn(user, password, host, port, database)
-    with Exporter(
-        conn,
-        schema,
-        query,
-        output_abs
-    ) as exp:
+    with Exporter(conn, schema, query, output_abs) as exp:
         exp.run_export()
     conn.close()
 

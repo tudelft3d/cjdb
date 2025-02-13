@@ -1,14 +1,14 @@
 import copy
+import io
 import json
-import sys
 import shutil
+import sys
+from typing import Dict
 
 from psycopg2 import sql
 from psycopg2.extras import DictCursor
 
 from cjdb.logger import logger
-from typing import Dict
-import io
 
 
 # exporter class
@@ -64,17 +64,18 @@ class Exporter:
             sys.exit(1)
 
         for r in rows:
-            self.city_objects.add(r['id'])
-            if r['children'][0]:
-                self.city_objects.update(r['children'])
-            self.relationships[r['id']] = r['children']
+            self.city_objects.add(r["id"])
+            if r["children"][0]:
+                self.city_objects.update(r["children"])
+            self.relationships[r["id"]] = r["children"]
 
     def get_metadata(self) -> Dict:
         # first line of the CityJSONL stream with some metadata
         with self.connection.cursor(cursor_factory=DictCursor) as cursor:
             cursor.execute(
-                sql.SQL("SELECT m.* FROM {}.cj_metadata m limit 1")
-                .format(sql.Identifier(self.schema))
+                sql.SQL("SELECT m.* FROM {}.cj_metadata m limit 1").format(
+                    sql.Identifier(self.schema)
+                )
             )
             meta1 = cursor.fetchone()
         logger.info("Done")
@@ -85,9 +86,11 @@ class Exporter:
         metadata["vertices"] = []
         metadata["transform"] = {}
         imp_digits = 3  # TODO: defined by users so expose
-        metadata["transform"]["scale"] = [1.0 / pow(10, imp_digits),
-                                   1.0 / pow(10, imp_digits),
-                                   1.0 / pow(10, imp_digits)]
+        metadata["transform"]["scale"] = [
+            1.0 / pow(10, imp_digits),
+            1.0 / pow(10, imp_digits),
+            1.0 / pow(10, imp_digits),
+        ]
         metadata["metadata"] = {}
         if "referenceSystem" in meta1:
             # TODO: Fetch the referenceSystem from the SRID
@@ -99,8 +102,10 @@ class Exporter:
                 "referenceSystem"
             ]
         else:
-            metadata["metadata"]["referenceSystem"] = "https://www.opengis.net/def/crs/EPSG/0/" + str(meta1["srid"])  # noqa
-        
+            metadata["metadata"]["referenceSystem"] = (
+                "https://www.opengis.net/def/crs/EPSG/0/" + str(meta1["srid"])
+            )  # noqa
+
         # TODO: add geometry-template from all imported files or select only
         #       the ones relevant?
         #       We could iterate over the ids and fetch the ones having '+'
@@ -109,12 +114,12 @@ class Exporter:
         #       though
         # TODO: add extra-properties? Tricky to know which ones to be honest,
         #       maybe a flag?
-        
+
         # fetch in memory *all* we need, won't work for super large datasets
         metadata["transform"]["translate"] = self.bboxmin
-        metadata = json.dumps(metadata, separators=(',', ':'))
+        metadata = json.dumps(metadata, separators=(",", ":"))
         return metadata
-    
+
     def get_data(self):
         self.get_city_objects_and_relationships()
         with self.connection.cursor(cursor_factory=DictCursor) as cursor:
@@ -122,24 +127,22 @@ class Exporter:
             if self.city_objects:
                 sql = sql + f""" WHERE co.id IN
                      ({ str(self.city_objects).strip('{').strip('}')});"""
-                      
+
             cursor.execute(sql)
             rows = cursor.fetchall()
         for r in rows:
-            self.data[r['id']] = r
+            self.data[r["id"]] = r
         self.set_min_bbox()
 
     def get_features(self):
         feature_list = []
         for parent, children in self.relationships.items():
-            feature = write_cjf(parent,
-                                children,
-                                self.data,
-                                self.relationships,
-                                self.bboxmin)
+            feature = write_cjf(
+                parent, children, self.data, self.relationships, self.bboxmin
+            )
             feature_list.append(feature)
         return feature_list
-        
+
     def run_export(self) -> None:
         logger.info("Exporting from schema %s", self.schema)
         f_out = open(self.output, "w")
@@ -169,8 +172,7 @@ class Exporter:
                                         for i in range(3):
                                             if vertex[i] < bboxmin[i]:
                                                 bboxmin[i] = vertex[i]
-                    elif g["type"] == "MultiSurface" \
-                                      or g["type"] == "CompositeSurface":
+                    elif g["type"] == "MultiSurface" or g["type"] == "CompositeSurface":
                         for surface in g["boundaries"]:
                             for ring in surface:
                                 for vertex in ring:
@@ -225,8 +227,7 @@ def write_cjf(parent, children, data, relationships, bboxmin):
     j["CityObjects"][poid] = {}
     j["CityObjects"][poid]["type"] = data[parent]["type"]
     if data[parent]["attributes"] is not None:
-        j["CityObjects"][poid]["attributes"] =\
-            data[parent]["attributes"]
+        j["CityObjects"][poid]["attributes"] = data[parent]["attributes"]
     # parent first
     vertices = []
     g2, vs = reference_vertices_in_cjf(
@@ -241,9 +242,7 @@ def write_cjf(parent, children, data, relationships, bboxmin):
             ls_parents_children.append((parent, child))
     while len(ls_parents_children) > 0:
         pc = ls_parents_children.pop()
-        j, vertices = add_child_to_cjf(
-            j, pc[0], pc[1], vertices, bboxmin, data
-        )
+        j, vertices = add_child_to_cjf(j, pc[0], pc[1], vertices, bboxmin, data)
         # ls_parents_children.extend(new_pc)
         if pc[1] in relationships:
             ls_parents_children.extend(relationships[pc[1]].children)
@@ -260,14 +259,15 @@ def add_child_to_cjf(j, parent_id, child_id, vertices, bboxmin, relationships):
     j["CityObjects"][poid]["children"].append(coid)
     j["CityObjects"][coid] = {}
     j["CityObjects"][coid]["type"] = relationships[child_id]["type"]
-    if "attributes" in relationships[child_id] and relationships[child_id]["attributes"]:
+    if (
+        "attributes" in relationships[child_id]
+        and relationships[child_id]["attributes"]
+    ):
         j["CityObjects"][coid]["attributes"] = relationships[child_id]["attributes"]
     j["CityObjects"][coid]["parents"] = [poid]
-    g2, vs = \
-        reference_vertices_in_cjf(relationships[child_id]["geometry"],
-                                  3,
-                                  bboxmin,
-                                  len(vertices))
+    g2, vs = reference_vertices_in_cjf(
+        relationships[child_id]["geometry"], 3, bboxmin, len(vertices)
+    )
     vertices.extend(vs)
     if g2 is not None:
         j["CityObjects"][coid]["geometry"] = g2
@@ -325,14 +325,10 @@ def reference_vertices_in_cjf(gs, imp_digits, translate, offset=0):
                             v = [0.0, 0.0, 0.0]
                             for r in range(3):
                                 v[r] = int(
-                                    (p % (vertex[r] - translate[r]))
-                                    .replace(
-                                        ".", ""
-                                    )
+                                    (p % (vertex[r] - translate[r])).replace(".", "")
                                 )
                             vertices.append(v)
-        elif g["type"] == "MultiSurface" \
-                          or g["type"] == "CompositeSurface":
+        elif g["type"] == "MultiSurface" or g["type"] == "CompositeSurface":
             for j, surface in enumerate(g["boundaries"]):
                 for k, ring in enumerate(surface):
                     for l, vertex in enumerate(ring):
@@ -341,8 +337,7 @@ def reference_vertices_in_cjf(gs, imp_digits, translate, offset=0):
                         v = [0.0, 0.0, 0.0]
                         for r in range(3):
                             v[r] = int(
-                                (p % (vertex[r] - translate[r]))
-                                .replace(".", "")
+                                (p % (vertex[r] - translate[r])).replace(".", "")
                             )
                         vertices.append(v)
         # TODO: MultiSolid

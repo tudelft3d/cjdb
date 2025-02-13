@@ -4,7 +4,6 @@ from sqlalchemy import (Column, ForeignKey, Integer, String, UniqueConstraint,
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import declarative_base, relationship
 
-
 Base = declarative_base()
 
 
@@ -31,9 +30,7 @@ class CjMetadataModel(BaseModel):
     started_at = Column(TIMESTAMP, default=func.now())
     finished_at = Column(TIMESTAMP)
     bbox = Column(Geometry("Polygon"))
-    objects = relationship("CjObjectModel",
-                           backref='cj_metadata',
-                           passive_deletes=True)
+    objects = relationship("CjObjectModel", backref="cj_metadata", passive_deletes=True)
 
     def get_already_imported_files(self, session):
         # query already imported files,
@@ -62,7 +59,7 @@ class CjMetadataModel(BaseModel):
 class CjObjectModel(BaseModel):
     __tablename__ = "city_object"
     __table_args__ = {"schema": "cjdb"}
-    cj_metadata_id = Column(Integer, ForeignKey(CjMetadataModel.id, ondelete='CASCADE'))
+    cj_metadata_id = Column(Integer, ForeignKey(CjMetadataModel.id, ondelete="CASCADE"))
     object_id = Column(String, nullable=False)
     type = Column(String, nullable=False)
     attributes = Column(NullableJSONB())
@@ -107,16 +104,10 @@ class CjObjectModel(BaseModel):
 class CityObjectRelationshipModel(BaseModel):
     __tablename__ = "city_object_relationships"
     __table_args__ = {"schema": "cjdb"}
-    parent_id = Column(Integer, ForeignKey(CjObjectModel.id,
-                                           ondelete='CASCADE'))
-    child_id = Column(Integer, ForeignKey(CjObjectModel.id,
-                                          ondelete='CASCADE'))
+    parent_id = Column(Integer, ForeignKey(CjObjectModel.id, ondelete="CASCADE"))
+    child_id = Column(Integer, ForeignKey(CjObjectModel.id, ondelete="CASCADE"))
 
-    parent = relationship(CjObjectModel,
-                          foreign_keys=[parent_id],
-                          post_update=True)
-    child = relationship(CjObjectModel,
-                         foreign_keys=[child_id],
-                         post_update=True)
+    parent = relationship(CjObjectModel, foreign_keys=[parent_id], post_update=True)
+    child = relationship(CjObjectModel, foreign_keys=[child_id], post_update=True)
 
     parent_child_unique = UniqueConstraint(parent_id, child_id)

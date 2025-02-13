@@ -95,8 +95,7 @@ geometry_6["type"] = "MultiSurface"
 
 
 def test_get_flattened_polygons_from_boundaries_multisurface():
-    res = get_flattened_polygons_from_boundaries(
-        boundary_multisurface_not_nested)
+    res = get_flattened_polygons_from_boundaries(boundary_multisurface_not_nested)
     assert isinstance(res[0], Polygon)
     assert res[0].exterior.coords[0][0] == approx(121077.757)
     assert res[0].exterior.coords[0][1] == approx(485119.04699999996)
@@ -143,8 +142,4 @@ def test_get_ground_geometry_surfaces():
 def test_get_ground_surfaces():
     surfaces = get_flattened_polygons_from_boundaries(boundary_solid)
     ground_surfaces = get_ground_surfaces(surfaces)
-    assert ground_surfaces[0] == Polygon(((0, 1),
-                                          (1, 1),
-                                          (1, 0),
-                                          (0, 0),
-                                          (0, 1)))
+    assert ground_surfaces[0] == Polygon(((0, 1), (1, 1), (1, 0), (0, 0), (0, 1)))

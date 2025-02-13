@@ -17,6 +17,17 @@ for soon-to-be removed features.
 
 `Security` in case of vulnerabilities.
 
+## [2.2.0] - 2025-02-12
+`Added`
+Flag --clustering to make clustering optional 
+Polygon validation
+
+`Changed` 
+Clustering is now optional.
+
+`Fixed`
+Bug with PGPASSWORD not being recognized
+
 
 ## [2.1.0] - 2023-10-20
 
